@@ -12,12 +12,17 @@ app.set('port',process.env.PORT || 3000);
 app.engine('handlebars', exphbs({defaultLayout: 'main'}));
 app.set('view engine', 'handlebars');
 
+//设置静态文件,static 中间件相当于给你想要发送的所有静态文件创建了一个路由
+app.use(express.static(__dirname + '/public'));
+
 app.get('/',function(req,res){
 	res.render('home')
 })
 
+var person = ['小明','小强','小红'];
 app.get('/about',function(req,res){
-	res.render('about')
+	var p = person[Math.floor(Math.random()*3)];
+	res.render('about',{person:p})
 })
 
 //定制404页面
