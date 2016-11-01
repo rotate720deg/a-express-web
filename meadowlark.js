@@ -1,7 +1,8 @@
 //这是我们的入口文件,倾向于按照项目命名主文件
 
 var express = require('express'),
-	exphbs  = require('express-handlebars');
+	exphbs  = require('express-handlebars'),
+	person = require('./lib/person.js');
 
 var app = express();
 
@@ -19,10 +20,10 @@ app.get('/',function(req,res){
 	res.render('home')
 })
 
-var person = ['小明','小强','小红'];
+
 app.get('/about',function(req,res){
-	var p = person[Math.floor(Math.random()*3)];
-	res.render('about',{person:p})
+	
+	res.render('about',{person:person.person()})
 })
 
 //定制404页面
