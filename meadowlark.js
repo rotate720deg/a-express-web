@@ -16,14 +16,21 @@ app.set('view engine', 'handlebars');
 //设置静态文件,static 中间件相当于给你想要发送的所有静态文件创建了一个路由
 app.use(express.static(__dirname + '/public'));
 
+//我们添加一个单元测试
+app.use(function(req,res,next){
+	res.locals.showTests = app.get('env')!=='production' && req.query.test === '1';
+	next();
+});
+
 app.get('/',function(req,res){
 	res.render('home')
 })
 
 
 app.get('/about',function(req,res){
-	
-	res.render('about',{person:person.person()})
+	//修改，让这个页面使用tests-about.js单元测试
+	res.render('about',{person:person.person(),
+		pageTestScript:'/qa/tests-about.js'})
 })
 
 //定制404页面
