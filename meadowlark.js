@@ -1,8 +1,9 @@
 //这是我们的入口文件,倾向于按照项目命名主文件
 
 var express = require('express'),
-	exphbs  = require('express-handlebars'),
-	person = require('./lib/person.js');
+    exphbs  = require('express-handlebars'),
+    person = require('./lib/person.js'),
+   	getWeather = require('./lib/weather.js');
 
 var app = express();
 
@@ -22,15 +23,45 @@ app.use(function(req,res,next){
 	next();
 });
 
-app.get('/',function(req,res){
-	res.render('home')
-})
 
+//添加中间件用来渲染局部视图
+app.use(function(req, res, next){
+	if(!res.locals.partials){
+		res.locals.partials = {};
+	}
+	
+	res.locals.partials.weather = getWeather.weather();
+	//console.log(res.locals.partials.weather.locations)
+	next();
+});
+
+app.get('/',function(req,res){
+	//console.log(res.locals.partials.weather.locations)
+	res.render('home');
+});
+
+app.get('/headers',function(req,res){
+	res.type('text/plain');
+	var s = '';
+	for(var name in req.headers){
+		s+=name+':'+req.headers[name]+'\n'
+	}
+	res.send(s)
+});
 
 app.get('/about',function(req,res){
 	//修改，让这个页面使用tests-about.js单元测试
 	res.render('about',{person:person.person(),
 		pageTestScript:'/qa/tests-about.js'})
+})
+
+
+app.get('/tours/hood-river',function(req,res){
+	res.render('tours/hood-river')
+})
+
+app.get('/tours/request-group-rate',function(req,res){
+	res.render('tours/request-group-rate')
 })
 
 //定制404页面
