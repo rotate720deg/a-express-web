@@ -3,8 +3,12 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
+    "body-parser": "^1.15.2",
+    "cookie-parser": "^1.4.3",
     "express": "^4.0.0",
-    "express-handlebars": "^3.0.0"
+    "express-handlebars": "^3.0.0",
+    "express-session": "^1.14.2",
+    "formidable": "^1.0.17"
   },
   "devDependencies": {
     "chai": "^3.5.0",
