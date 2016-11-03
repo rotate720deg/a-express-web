@@ -7,11 +7,23 @@ var express = require('express'),
 
 var app = express();
 
+var hbs = exphbs.create({
+	defaultLayout: 'main',
+	helpers: {
+		section:function(name, options){
+			if(!this._sections){
+				this._sections = {};
+			}
+			this._sections[name] = options.fn(this);
+			return null;
+		}
+	}
+});
 //设置端口变量
 app.set('port',process.env.PORT || 3000);
 
 //设置模板引擎
-app.engine('handlebars', exphbs({defaultLayout: 'main'}));
+app.engine('handlebars', hbs.engine);
 app.set('view engine', 'handlebars');
 
 //设置静态文件,static 中间件相当于给你想要发送的所有静态文件创建了一个路由
@@ -55,6 +67,24 @@ app.get('/about',function(req,res){
 		pageTestScript:'/qa/tests-about.js'})
 })
 
+app.get('/jquerytest',function(req,res){
+	//console.log(res.locals.partials.weather.locations)
+	res.render('jquerytest');
+});
+
+app.get('/nursery-rhyme', function(req, res){
+	res.render('nursery-rhyme');
+});
+
+//ajax的请求
+app.get('/data/nursery-rhyme', function(req, res){
+	res.json({
+		animal: 'squirrel',
+		bodyPart: 'tail',
+		adjective: 'bushy',
+		noun: 'heck',
+	});
+});
 
 app.get('/tours/hood-river',function(req,res){
 	res.render('tours/hood-river')
