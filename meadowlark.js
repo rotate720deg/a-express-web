@@ -7,7 +7,10 @@ var express = require('express'),
    	bodyparser = require('body-parser'),
    	formidable = require('formidable'),
    	cookieParser = require('cookie-parser'),
-   	session = require('express-session');
+   	session = require('express-session'),
+   	credentials = require('./credentials.js'),
+   	emailService = require('./lib/email.js')(credentials);
+   	
 
 
 var app = express();
@@ -34,8 +37,14 @@ app.set('view engine', 'handlebars');
 //设置静态文件,static 中间件相当于给你想要发送的所有静态文件创建了一个路由
 app.use(express.static(__dirname + '/public'));
 app.use(bodyparser.json());
+app.use(bodyparser.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(session());
+app.use(session({
+	resave: false,
+	secret: 'keyboard cat',
+  	saveUninitialized: true
+}));
+
 //我们添加一个单元测试
 app.use(function(req,res,next){
 	res.locals.showTests = app.get('env')!=='production' && req.query.test === '1';
@@ -46,6 +55,7 @@ app.use(function(req,res,next){
 app.use(function(req, res, next){
 	// 如果有即显消息，把它传到上下文中，然后清除它
 	res.locals.flash = req.session.flash;
+	//res.locals.flash = true;//我不想通过重定向来即显消息，就直接赋值
 	delete req.session.flash;
 	next();
 });
@@ -108,40 +118,43 @@ app.get('/newsletter', function(req, res){
 app.post('/newsletter', function(req, res){
 	var name = req.body.name || '', email = req.body.email || '';
 	// 输入验证
+	var VALID_EMAIL_REGEX = /\w+@\w+\.(cn|com)/;
 	if(!email.match(VALID_EMAIL_REGEX)) {
 		if(req.xhr){
 			return res.json({ error: 'Invalid name email address.' });
 		} 
+
+		//如果是表单提交就为即闪消息（出现后可关闭）赋值，再删除，以便下次刷新后没有。
 		req.session.flash = {
 			type: 'danger',
-			intro: 'Validation error!',
+			intro: 'Thank you!',
 			message: 'The email address you entered was not valid.',
 		};
 		return res.redirect(303, '/newsletter/archive');
 	}
 	//以下是储存到数据库
-	new NewsletterSignup({ name: name, email: email }).save(function(err){
-		if(err) {
-			if(req.xhr){
-				return res.json({ error: 'Database error.' });	
-			}
-			req.session.flash = {
-				type: 'danger',
-				intro: 'Database error!',
-				message: 'There was a database error; please try again later.',
-			}
-			return res.redirect(303, '/newsletter/archive');
-		}
-		if(req.xhr){
-			return res.json({ success: true });	
-		}
-		req.session.flash = {
-			type: 'success',
-			intro: 'Thank you!',
-			message: 'You have now been signed up for the newsletter.',
-		};
-		return res.redirect(303, '/newsletter/archive');
-	});
+	// new NewsletterSignup({ name: name, email: email }).save(function(err){
+	// 	if(err) {
+	// 		if(req.xhr){
+	// 			return res.json({ error: 'Database error.' });	
+	// 		}
+	// 		req.session.flash = {
+	// 			type: 'danger',
+	// 			intro: 'Database error!',
+	// 			message: 'There was a database error; please try again later.',
+	// 		}
+	// 		return res.redirect(303, '/newsletter/archive');
+	// 	}
+	// 	if(req.xhr){
+	// 		return res.json({ success: true });	
+	// 	}
+	// 	req.session.flash = {
+	// 		type: 'success',
+	// 		intro: 'Thank you!',
+	// 		message: 'You have now been signed up for the newsletter.',
+	// 	};
+	// 	return res.redirect(303, '/newsletter/archive');
+	// });
 });
 
 
@@ -190,6 +203,70 @@ app.get('/tours/hood-river',function(req,res){
 app.get('/tours/request-group-rate',function(req,res){
 	res.render('tours/request-group-rate')
 })
+
+//发送邮件
+// var mailTransport = nodemailer.createTransport(smtpTransport({
+// 	host: 'smtp.qq.com',
+// 	secureConnection: true, 
+// 	port:465,
+// 	auth: {
+// 		user: credentials.gmail.user,
+// 		pass: credentials.gmail.password,
+// 	}
+// }));
+
+// mailTransport.sendMail({
+// 	from: '"全世界最帅的男人" <395340017@qq.com>',
+// 	to: '1442665433@qq.com',
+// 	subject: '哈哈哈哈',
+// 	html:'<h1>这是一份邮件，是不是很大的一个标题</h1>',
+// 	generateTextFromHtml: true,
+// 	text: '你们两个大笨蛋，哈哈哈哈'
+// }, function(err){
+// 	if(err){
+// 		console.error( 'Unable to send email: ' + err );	
+// 	}
+// });
+
+//封装后的邮件发送
+//emailService.send('1442665433@qq.com', 'Hood River tours on sale today!','Get \'em while they\'re hot!');
+
+//购物车感谢页面,我们还是将发送邮寄模块化吧
+app.post('/cart/checkout', function(req, res){
+	var cart = req.session.cart;
+	console.log(cart)
+	if(!cart) next(new Error('Cart does not exist.'));
+	var name = req.body.name || '', email = req.body.email || '';
+	// 输入验证
+	if(!email.match(VALID_EMAIL_REGEX)){
+		return res.next(new Error('Invalid email address.'));
+	}
+	// 分配一个随机的购物车 ID；一般我们会用一个数据库 ID
+	cart.number = Math.random().toString().replace(/^0\.0*/, '');
+	cart.billing = {
+		name: name,
+		email: email,
+	};
+	res.render('email/cart-thank-you',{ layout: null, cart: cart }, function(err,html){
+		if( err ){
+			console.log('error in email template');
+		}
+		mailTransport.sendMail({
+			from: '"Meadowlark Travel": 395340017@qq.com',
+			to: cart.billing.email,
+			subject: 'Thank You for Book your Trip with Meadowlark',
+			html: html,
+			generateTextFromHtml: true
+		}, function(err){
+			if(err) console.error('Unable to send confirmation: '
+		+ err.stack);
+		});
+	});
+	res.render('cart-thank-you', { cart: cart });
+});
+
+
+
 
 //定制404页面
 app.use(function(req,res,next){

@@ -8,7 +8,9 @@
     "express": "^4.0.0",
     "express-handlebars": "^3.0.0",
     "express-session": "^1.14.2",
-    "formidable": "^1.0.17"
+    "formidable": "^1.0.17",
+    "nodemailer": "^2.6.4",
+    "nodemailer-smtp-transport": "^2.7.2"
   },
   "devDependencies": {
     "chai": "^3.5.0",
